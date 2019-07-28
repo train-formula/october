@@ -2,16 +2,15 @@ package october
 
 import (
 	"net/http"
-	"time"
 )
 
 func healthHTTPHandler(healthChecks HealthChecks) func(http.ResponseWriter, *http.Request) {
 
 	return func(write http.ResponseWriter, req *http.Request) {
-		start := time.Now().UTC()
+		//start := time.Now().UTC()
 
 		// Increment prometheus health metrics
-		healthCounterRequests.Inc()
+		//healthCounterRequests.Inc()
 
 		checkResult := healthChecks.RunChecks()
 
@@ -23,16 +22,16 @@ func healthHTTPHandler(healthChecks HealthChecks) func(http.ResponseWriter, *htt
 
 		write.Write(checkResult.json())
 
-		if checkResult.CanonicalStatus == Health_Error {
+		/*if checkResult.CanonicalStatus == Health_Error {
 			healthCounterResponses.WithLabelValues("503", checkResult.CanonicalStatus.String()).Inc()
 		} else {
 			healthCounterResponses.WithLabelValues("200", checkResult.CanonicalStatus.String()).Inc()
-		}
+		}*/
 
-		stop := time.Now().UTC()
+		//stop := time.Now().UTC()
 
-		latency := (float64(stop.UnixNano()) - float64(start.UnixNano())) / float64(time.Second)
-		healthLatencySummary.Observe(latency)
+		//latency := (float64(stop.UnixNano()) - float64(start.UnixNano())) / float64(time.Second)
+		//healthLatencySummary.Observe(latency)
 
 	}
 
