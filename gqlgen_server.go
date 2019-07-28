@@ -50,12 +50,20 @@ func (g *GQLGenServer) Start() error {
 		zap.L().Named("OCTOBER").Fatal("Missing gqlgen executable schema, call WithExecutableSchema before Start ")
 	}
 
+	if g.mode == LOCAL {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	server := gin.New()
+
 
 	server.Use(Ginzap(zap.L(), time.RFC3339, true), RecoveryWithZap(zap.L(), true))
 
 	if g.mode == LOCAL {
 		server.GET("/", g.playgroundHandler())
+		zap.L().Info("Starting with GraphQL playground")
 	}
 	server.POST("/query", g.graphqlHandler())
 
