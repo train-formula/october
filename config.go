@@ -12,7 +12,7 @@ const (
 	modeEnvVariable         = "OCTOBER_MODE"
 	portEnvVariable         = "OCTOBER_PORT"
 	gqlPortEnvVariable      = "OCTOBER_GRAPHQL_PORT"
-	configuratorTagName     = "octoberconfig"
+	configuratorTagName     = "october"
 )
 
 // Generate a new configuratior, prefix may be an empty string
