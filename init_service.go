@@ -26,7 +26,7 @@ func initService(mode Mode, fromEnv bool) (*OctoberServer, error) {
 
 	port := 0
 	envPort := strings.TrimSpace(os.Getenv(portEnvVariable))
-	if envPort != "" {q
+	if envPort != "" {
 		var err error
 		port, err = strconv.Atoi(envPort)
 		if err != nil {
