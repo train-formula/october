@@ -15,6 +15,8 @@ func initService(mode Mode, fromEnv bool) (*OctoberServer, error) {
 		return nil, loggerErr
 	}
 
+	zap.L().Named("OCTOBER").Info("October configured zap")
+
 	zap.L().Named("OCTOBER").Info("Initializing October...")
 	if fromEnv {
 		zap.L().Named("OCTOBER").Info("October Mode (from env): " + mode.String())
@@ -22,11 +24,9 @@ func initService(mode Mode, fromEnv bool) (*OctoberServer, error) {
 		zap.L().Named("OCTOBER").Info("October Mode: " + mode.String())
 	}
 
-	zap.L().Named("OCTOBER").Info("October configured zap")
-
 	port := 0
 	envPort := strings.TrimSpace(os.Getenv(portEnvVariable))
-	if envPort != "" {
+	if envPort != "" {q
 		var err error
 		port, err = strconv.Atoi(envPort)
 		if err != nil {

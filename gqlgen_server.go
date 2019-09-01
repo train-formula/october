@@ -18,6 +18,7 @@ type GQLGenServer struct {
 
 	schema graphql.ExecutableSchema
 	options []handler.Option
+	ginMiddleware []gin.HandlerFunc
 }
 
 func (g *GQLGenServer) playgroundHandler() gin.HandlerFunc {
@@ -44,6 +45,10 @@ func (g *GQLGenServer) WithOptions(options ...handler.Option) {
 	g.options = options
 }
 
+func (g *GQLGenServer) WithGinMiddleware(middleware ...gin.HandlerFunc) {
+	g.ginMiddleware = middleware
+}
+
 
 func (g *GQLGenServer) Start() error {
 	if g.schema == nil {
@@ -58,8 +63,14 @@ func (g *GQLGenServer) Start() error {
 
 	server := gin.New()
 
+	middleware := []gin.HandlerFunc{
+		Ginzap(zap.L(), time.RFC3339, true),
+		RecoveryWithZap(zap.L(), true),
+	}
 
-	server.Use(Ginzap(zap.L(), time.RFC3339, true), RecoveryWithZap(zap.L(), true))
+	middleware = append(middleware, g.ginMiddleware...)
+
+	server.Use(middleware...)
 
 	if g.mode == LOCAL {
 		server.GET("/", g.playgroundHandler())
