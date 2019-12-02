@@ -16,6 +16,7 @@ type GQLGenServer struct {
 	address string
 	port    int
 
+	healthChecks               HealthChecks
 	schema graphql.ExecutableSchema
 	options []handler.Option
 	ginMiddleware []gin.HandlerFunc
@@ -76,7 +77,10 @@ func (g *GQLGenServer) Start() error {
 		server.GET("/", g.playgroundHandler())
 		zap.L().Info("Starting with GraphQL playground")
 	}
+
 	server.POST("/query", g.graphqlHandler())
+
+	server.GET("/health", healthHTTPGinHandler(g.healthChecks))
 
 	return server.Run(fmt.Sprintf("%s:%d", g.address, g.port))
 }

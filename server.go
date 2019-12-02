@@ -128,6 +128,7 @@ func (o *OctoberServer) GenerateGQLGenServerServerFromEnv() (*GQLGenServer, erro
 	server := &GQLGenServer{
 		mode:   o.mode,
 
+		healthChecks: o.healthChecks,
 		address: address,
 		port:    port,
 	}

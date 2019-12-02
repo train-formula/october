@@ -1,6 +1,7 @@
 package october
 
 import (
+	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
@@ -35,4 +36,12 @@ func healthHTTPHandler(healthChecks HealthChecks) func(http.ResponseWriter, *htt
 
 	}
 
+}
+
+func healthHTTPGinHandler(healthChecks HealthChecks) gin.HandlerFunc {
+
+	handle := healthHTTPHandler(healthChecks)
+	return func(c *gin.Context) {
+		handle(c.Writer, c.Request)
+	}
 }
