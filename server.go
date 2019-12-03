@@ -131,7 +131,6 @@ func (o *OctoberServer) GenerateGQLGenServerServerFromEnv() (*GQLGenServer, erro
 	server := &GQLGenServer{
 		mode:   o.mode,
 
-		serverLock: &sync.Mutex{},
 		healthChecks: o.healthChecks,
 		address: address,
 		port:    port,
