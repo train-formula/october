@@ -69,7 +69,7 @@ func (g *GQLGenServer) Start() error {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	g.serverLock.Lock()
+	//g.serverLock.Lock()
 
 	if g.server != nil {
 		return errors.New("Server already running")
@@ -98,13 +98,15 @@ func (g *GQLGenServer) Start() error {
 		Handler: engine,
 	}*/
 
-	g.serverLock.Unlock()
+	//g.serverLock.Unlock()
 
 	address := fmt.Sprintf("%s:%d", g.address, g.port)
 
-	//engine.Run()
+	fmt.Println(address)
 
-	return http.ListenAndServe(address, engine)
+	return engine.Run()
+
+	//return http.ListenAndServe(address, engine)
 
 	//return g.server.ListenAndServe()
 }
