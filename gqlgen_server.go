@@ -102,7 +102,7 @@ func (g *GQLGenServer) Start() error {
 
 	address := fmt.Sprintf("%s:%d", g.address, g.port)
 
-	fmt.Println(address)
+	fmt.Println(address, "OK")
 
 	return engine.Run()
 
