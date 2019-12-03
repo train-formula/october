@@ -6,6 +6,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/handler"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"net/http"
 	"sync"
@@ -68,6 +69,11 @@ func (g *GQLGenServer) Start() error {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	g.serverLock.Lock()
+
+	if g.server != nil {
+		return errors.New("Server already running")
+	}
 
 	engine := gin.New()
 
@@ -89,7 +95,10 @@ func (g *GQLGenServer) Start() error {
 
 	g.server = &http.Server{
 		Addr: fmt.Sprintf("%s:%d", g.address, g.port),
+		Handler: engine,
 	}
+
+	g.serverLock.Unlock()
 
 	return g.server.ListenAndServe()
 }
