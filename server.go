@@ -1,6 +1,9 @@
 package october
 
 import (
+	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -148,7 +151,7 @@ func (o *OctoberServer) MustGenerateGQLGenServerServerFromEnv() *GQLGenServer {
 	return server
 }
 
-/*func (o *OctoberServer) Start(grpcServer *GRPCServer, gracefulSignals ...os.Signal) {
+func (o *OctoberServer) Start(gqlServer *GQLGenServer, gracefulSignals ...os.Signal) {
 
 	// Initialize stop coordinators
 	// Used to coordinate stopping the October server and the controller GRPC server (if provided)
@@ -207,11 +210,11 @@ func (o *OctoberServer) MustGenerateGQLGenServerServerFromEnv() *GQLGenServer {
 	grpcStoppedChan := make(chan struct{})
 	// We want to start our grpc server (if present) BEFORE health checks
 	// This allows the server to be alive successfully before health checks are enabled
-	if grpcServer != nil {
+	if gqlServer != nil {
 
 		go func() {
 
-			serveErr := grpcServer.Start()
+			serveErr := gqlServer.Start()
 
 			if serveErr != nil {
 				zap.S().Named("OCTOBER").Error("Controlled GRPC server died with error", zap.Error(serveErr))
@@ -270,11 +273,11 @@ func (o *OctoberServer) MustGenerateGQLGenServerServerFromEnv() *GQLGenServer {
 
 	select {
 	case <-stopChan:
-		if grpcServer != nil {
+		if gqlServer != nil {
 			closeWg.Add(1)
 			go func() {
 				defer closeWg.Done()
-				grpcServer.Shutdown(context.Background())
+				gqlServer.Shutdown(context.Background())
 				select {
 				case <-grpcStoppedChan:
 					zap.S().Named("OCTOBER").Info("Controlled GRPC server shutdown complete")
@@ -317,4 +320,4 @@ func (o *OctoberServer) Shutdown(ctx context.Context) error {
 
 	return o.server.Shutdown(ctx)
 
-}*/
+}

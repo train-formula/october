@@ -1,11 +1,15 @@
 package october
 
 import (
+	"context"
 	"fmt"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/handler"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"net/http"
+	"sync"
 	"time"
 )
 
@@ -15,6 +19,9 @@ type GQLGenServer struct {
 
 	address string
 	port    int
+
+	server *http.Server
+	serverLock sync.Mutex
 
 	healthChecks               HealthChecks
 	schema graphql.ExecutableSchema
@@ -62,7 +69,13 @@ func (g *GQLGenServer) Start() error {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	server := gin.New()
+	g.serverLock.Lock()
+
+	if g.server != nil {
+		return errors.New("Server already running")
+	}
+
+	engine := gin.New()
 
 	middleware := []gin.HandlerFunc{
 		Ginzap(zap.L(), time.RFC3339, true),
@@ -71,16 +84,36 @@ func (g *GQLGenServer) Start() error {
 
 	middleware = append(middleware, g.ginMiddleware...)
 
-	server.Use(middleware...)
+	engine.Use(middleware...)
 
 	if g.mode == LOCAL {
-		server.GET("/", g.playgroundHandler())
+		engine.GET("/", g.playgroundHandler())
 		zap.L().Info("Starting with GraphQL playground")
 	}
 
-	server.POST("/query", g.graphqlHandler())
+	engine.POST("/query", g.graphqlHandler())
 
-	server.GET("/health", healthHTTPGinHandler(g.healthChecks))
+	g.server = &http.Server{
+		Addr: fmt.Sprintf("%s:%d", g.address, g.port),
+	}
 
-	return server.Run(fmt.Sprintf("%s:%d", g.address, g.port))
+	g.serverLock.Unlock()
+
+	return g.server.ListenAndServe()
+}
+
+func (g *GQLGenServer) Shutdown(ctx context.Context) error {
+
+	g.serverLock.Lock()
+
+	if g.server == nil {
+		return nil
+	}
+
+	err := g.server.Shutdown(ctx)
+
+	g.serverLock.Unlock()
+
+	return err
+
 }
