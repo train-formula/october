@@ -3,7 +3,7 @@ module github.com/train-formula/october
 go 1.12
 
 require (
-	github.com/99designs/gqlgen v0.9.1 // indirect
+	github.com/99designs/gqlgen v0.9.1
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.4.0
 	github.com/golang/protobuf v1.3.2 // indirect
@@ -12,6 +12,7 @@ require (
 	github.com/mattn/go-isatty v0.0.8 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/pelletier/go-toml v1.4.0 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v1.0.0
 	github.com/prometheus/common v0.6.0 // indirect
 	github.com/prometheus/procfs v0.0.3 // indirect
