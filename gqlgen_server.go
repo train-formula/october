@@ -93,14 +93,20 @@ func (g *GQLGenServer) Start() error {
 
 	engine.POST("/query", g.graphqlHandler())
 
-	g.server = &http.Server{
+	/*g.server = &http.Server{
 		Addr: fmt.Sprintf("%s:%d", g.address, g.port),
 		Handler: engine,
-	}
+	}*/
 
 	g.serverLock.Unlock()
 
-	return g.server.ListenAndServe()
+	address := fmt.Sprintf("%s:%d", g.address, g.port)
+
+	//engine.Run()
+
+	return http.ListenAndServe(address, engine)
+
+	//return g.server.ListenAndServe()
 }
 
 func (g *GQLGenServer) Shutdown(ctx context.Context) error {
