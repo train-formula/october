@@ -69,7 +69,7 @@ func (g *GQLGenServer) Start() error {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	//g.serverLock.Lock()
+	g.serverLock.Lock()
 
 	if g.server != nil {
 		return errors.New("Server already running")
@@ -93,22 +93,18 @@ func (g *GQLGenServer) Start() error {
 
 	engine.POST("/query", g.graphqlHandler())
 
-	/*g.server = &http.Server{
+	g.server = &http.Server{
 		Addr: fmt.Sprintf("%s:%d", g.address, g.port),
 		Handler: engine,
-	}*/
+	}
 
-	//g.serverLock.Unlock()
+	g.serverLock.Unlock()
 
 	address := fmt.Sprintf("%s:%d", g.address, g.port)
 
 	fmt.Println(address, "OK")
 
-	return engine.Run()
-
-	//return http.ListenAndServe(address, engine)
-
-	//return g.server.ListenAndServe()
+	return g.server.ListenAndServe()
 }
 
 func (g *GQLGenServer) Shutdown(ctx context.Context) error {
