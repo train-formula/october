@@ -21,7 +21,7 @@ type GQLGenServer struct {
 	port    int
 
 	server *http.Server
-	serverLock sync.Mutex
+	serverLock *sync.Mutex
 
 	healthChecks               HealthChecks
 	schema graphql.ExecutableSchema
