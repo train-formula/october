@@ -217,7 +217,7 @@ func (o *OctoberServer) Start(gqlServer *GQLGenServer, gracefulSignals ...os.Sig
 
 			serveErr := gqlServer.Start()
 
-			if serveErr != nil {
+			if serveErr != nil && serveErr != http.ErrServerClosed {
 				zap.S().Named("OCTOBER").Error("Controlled GRPC server died with error", zap.Error(serveErr))
 			} else {
 				zap.S().Named("OCTOBER").Info("Controlled GRPC server closed")
@@ -228,7 +228,7 @@ func (o *OctoberServer) Start(gqlServer *GQLGenServer, gracefulSignals ...os.Sig
 			stoppingMu.Lock()
 			if stopping == false {
 				stopping = true
-				if serveErr != nil {
+				if serveErr != nil && serveErr != http.ErrServerClosed {
 					zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from controlled GRPC server error death", zap.Error(serveErr))
 				} else {
 					zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from controlled GRPC server death")
@@ -245,7 +245,7 @@ func (o *OctoberServer) Start(gqlServer *GQLGenServer, gracefulSignals ...os.Sig
 
 		serveErr := o.server.Serve(lis)
 
-		if serveErr != nil {
+		if serveErr != nil && serveErr != http.ErrServerClosed {
 			zap.S().Named("OCTOBER").Error("October server died with error", zap.Error(serveErr))
 		} else {
 			zap.S().Named("OCTOBER").Info("October server closed")
@@ -257,7 +257,7 @@ func (o *OctoberServer) Start(gqlServer *GQLGenServer, gracefulSignals ...os.Sig
 		stoppingMu.Lock()
 		if stopping == false {
 			stopping = true
-			if serveErr != nil {
+			if serveErr != nil && serveErr != http.ErrServerClosed {
 				zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from october server error death", zap.Error(serveErr))
 			} else {
 				zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from october server death")

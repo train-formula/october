@@ -22,7 +22,6 @@ func healthHTTPHandler(healthChecks HealthChecks) func(http.ResponseWriter, *htt
 			write.WriteHeader(200)
 		}
 
-		fmt.Println(checkResult.json())
 		write.Write(checkResult.json())
 
 		/*if checkResult.CanonicalStatus == Health_Error {

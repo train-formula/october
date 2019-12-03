@@ -102,7 +102,7 @@ func (g *GQLGenServer) Start() error {
 
 	address := fmt.Sprintf("%s:%d", g.address, g.port)
 
-	fmt.Println(address, "OK")
+	zap.S().Named("OCTOBER").Infof("Starting GraphQL server (%s)...", address)
 
 	return g.server.ListenAndServe()
 }
