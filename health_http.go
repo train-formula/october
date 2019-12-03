@@ -1,6 +1,7 @@
 package october
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -21,6 +22,7 @@ func healthHTTPHandler(healthChecks HealthChecks) func(http.ResponseWriter, *htt
 			write.WriteHeader(200)
 		}
 
+		fmt.Println(checkResult.json())
 		write.Write(checkResult.json())
 
 		/*if checkResult.CanonicalStatus == Health_Error {
@@ -42,6 +44,7 @@ func healthHTTPGinHandler(healthChecks HealthChecks) gin.HandlerFunc {
 
 	handle := healthHTTPHandler(healthChecks)
 	return func(c *gin.Context) {
+		fmt.Println("OK")
 		handle(c.Writer, c.Request)
 	}
 }
