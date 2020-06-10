@@ -3,7 +3,6 @@ package october
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -61,11 +60,13 @@ func NewOctoberServer(mode Mode, port int) *OctoberServer {
 		port = 10010
 	}
 
+	logger := zap.S().Named("OCTOBER")
 	// /healthChecks.AddCheck("october", check)
 
-	zap.S().Named("OCTOBER").Infof("Configuring server with mode %s", mode)
+	logger.Infof("Configuring server with mode %s", mode)
 
 	return &OctoberServer{
+		logger: logger,
 		server:       &http.Server{},
 		mode:         mode,
 		healthChecks: make(HealthChecks),
@@ -77,6 +78,7 @@ func NewOctoberServer(mode Mode, port int) *OctoberServer {
 }
 
 type OctoberServer struct {
+	logger   *zap.SugaredLogger
 	server                     *http.Server
 	mode                       Mode
 	healthChecks               HealthChecks
@@ -111,9 +113,57 @@ func (o *OctoberServer) buildServerMux() *http.ServeMux {
 }
 
 
+func (o *OctoberServer) GenerateGRPCServerFromEnv() (*GRPCServer, error) {
+
+	zap.L().Named("OCTOBER").Info("Generating controlled GRPC from environment variables")
+
+	address := "0.0.0.0"
+	port := 10000
+
+	envPort := strings.TrimSpace(os.Getenv(grpcPortEnvVariable))
+	if envPort != "" {
+		var err error
+		port, err = strconv.Atoi(envPort)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	tlsCrt := strings.TrimSpace(os.Getenv(tlsBundleCRTEnvVariable))
+	tlsKey := strings.TrimSpace(os.Getenv(tlsKeyEnvVariable))
+
+	if tlsCrt == "" {
+		o.logger.Infof("%s: (empty)", tlsBundleCRTEnvVariable)
+	} else {
+		o.logger.Infof("%s: %s", tlsBundleCRTEnvVariable, tlsCrt)
+	}
+
+	if tlsKey == "" {
+		o.logger.Infof("%s: (empty)", tlsKeyEnvVariable)
+	} else {
+		o.logger.Infof("%s: %s", tlsKeyEnvVariable, tlsKey)
+	}
+
+	server := &GRPCServer{
+		mode:   o.mode,
+		Server: nil,
+
+		address: address,
+		port:    port,
+	}
+
+	tlsErr := server.WithTLS(tlsCrt, tlsKey)
+	if tlsErr != nil {
+		return nil, tlsErr
+	}
+
+	return server, nil
+
+}
+
 func (o *OctoberServer) GenerateGQLGenServerServerFromEnv() (*GQLGenServer, error) {
 
-	zap.L().Named("OCTOBER").Info("Generating controlled gqlgen server from environment variables")
+	o.logger.Info("Generating controlled gqlgen server from environment variables")
 
 	address := "0.0.0.0"
 	port := 8080
@@ -152,165 +202,118 @@ func (o *OctoberServer) MustGenerateGQLGenServerServerFromEnv() *GQLGenServer {
 	return server
 }
 
-func (o *OctoberServer) Start(gqlServer *GQLGenServer, gracefulSignals ...os.Signal) {
+func (o *OctoberServer) StartControllable(controllableServers []ControllableServer, gracefulSignals ...os.Signal) {
+
+
+	o.server.Addr = fmt.Sprintf("%s:%d", o.octoberBindAddress, o.octoberBindPort)
+	o.server.Handler = o.buildServerMux()
+
+	controllableServers = append(
+		[]ControllableServer{ControlHttpServer(o.logger.Named("october").Desugar(), o.server, "october")},
+		controllableServers...
+	)
 
 	// Initialize stop coordinators
-	// Used to coordinate stopping the October server and the controller GRPC server (if provided)
+	// Used to coordinate stopping the October server and the controllable servers
 	stopChan := make(chan struct{})
 	stopping := false
 	stoppingMu := &sync.Mutex{}
 
+	// Send stop signal if not already sent
+	// Takes in an error that is logged if shutdown started, returns a boolean if we sent the signal
+	sendStopSignal := func(err error) bool {
+		stoppingMu.Lock()
+		defer stoppingMu.Unlock()
+
+		if !stopping {
+			stopping = true
+			if err != nil {
+				o.logger.Error("Shutting down October from error", zap.Error(err))
+			} else {
+				o.logger.Info("Shutting down October from graceful signal")
+			}
+
+			stopChan <- struct{}{}
+			return true
+		} else {
+			if err != nil {
+				o.logger.Named("OCTOBER").Info("Ignored graceful shutdown signal, graceful shutdown already initiated")
+			}
+			return false
+		}
+
+
+	}
+
+
+	shutdownCount := make(chan bool, len(controllableServers))
+
 	// Start by checking if we have graceful signals to handle
 	// We want to be sure this is started before anything else
 	if len(gracefulSignals) > 0 {
-
-		var signalString string
-
+		o.logger.Infof("Starting graceful shutdown handler for signals:")
 		for _, gs := range gracefulSignals {
-			signalString += fmt.Sprintf("%s, ", gs)
+			o.logger.Named("OCTOBER").Infof("    %s", gs)
 		}
 
-		signalString = strings.TrimSuffix(signalString, ", ")
-
-		zap.S().Named("OCTOBER").Infof("Starting graceful shutdown handler for signals: %s", signalString)
 		OnSignal(func(sig os.Signal) {
 
-			stoppingMu.Lock()
-
-			if stopping == false {
-				stopping = true
-				zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from graceful signal")
-				stopChan <- struct{}{}
-			} else {
-				zap.S().Named("OCTOBER").Info("Ignored graceful shutdown signal, graceful shutdown already initiated")
-			}
-
-			stoppingMu.Unlock()
+			sendStopSignal(nil)
 
 		}, gracefulSignals...)
 
 	}
 
-	address := fmt.Sprintf("%s:%d", o.octoberBindAddress, o.octoberBindPort)
-	zap.S().Named("OCTOBER").Infof("Starting server (%s)...", address)
-	lis, err := net.Listen("tcp", address)
+	for _, controllable := range controllableServers {
 
-	if lis != nil {
-		defer lis.Close()
-	}
+		go func(c ControllableServer) {
 
-	if err != nil {
-		zap.L().Named("OCTOBER").Fatal(fmt.Sprintf("October server failed to listen at %s", address), zap.Error(err))
-	}
 
-	o.server.Handler = o.buildServerMux()
+			logger := o.logger.Named(c.Name())
 
-	// Channel to use to allow coordination between when we attempt to shutdown the October server and when it actually shuts down
-	octoberStoppedChan := make(chan struct{})
-	// Channel to use to allow coordination between when we attempt to shutdown the GRPC server and when it actually shuts down
-	grpcStoppedChan := make(chan struct{})
-	// We want to start our grpc server (if present) BEFORE health checks
-	// This allows the server to be alive successfully before health checks are enabled
-	if gqlServer != nil {
+			shutdownControlled, err := c.Start()
 
-		go func() {
-
-			serveErr := gqlServer.Start()
-
-			if serveErr != nil && serveErr != http.ErrServerClosed {
-				zap.S().Named("OCTOBER").Error("Controlled GRPC server died with error", zap.Error(serveErr))
-			} else {
-				zap.S().Named("OCTOBER").Info("Controlled GRPC server closed")
+			if !shutdownControlled {
+				logger.Error(c.Name()+" shut down unexpectedly", zap.Error(err))
 			}
 
-			close(grpcStoppedChan)
+			sendStopSignal(err)
 
-			stoppingMu.Lock()
-			if stopping == false {
-				stopping = true
-				if serveErr != nil && serveErr != http.ErrServerClosed {
-					zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from controlled GRPC server error death", zap.Error(serveErr))
-				} else {
-					zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from controlled GRPC server death")
-				}
+			shutdownCount <- true
 
-				stopChan <- struct{}{}
-			}
-			stoppingMu.Unlock()
-
-		}()
+		}(controllable)
 	}
 
-	go func() {
 
-		serveErr := o.server.Serve(lis)
 
-		if serveErr != nil && serveErr != http.ErrServerClosed {
-			zap.S().Named("OCTOBER").Error("October server died with error", zap.Error(serveErr))
-		} else {
-			zap.S().Named("OCTOBER").Info("October server closed")
 
-		}
-
-		close(octoberStoppedChan)
-
-		stoppingMu.Lock()
-		if stopping == false {
-			stopping = true
-			if serveErr != nil && serveErr != http.ErrServerClosed {
-				zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from october server error death", zap.Error(serveErr))
-			} else {
-				zap.S().Named("OCTOBER").Info("Starting October graceful shutdown from october server death")
-			}
-
-			stopChan <- struct{}{}
-		}
-		stoppingMu.Unlock()
-
-	}()
-
-	var closeWg sync.WaitGroup
-	done := make(chan struct{})
-
+	var closeGroup sync.WaitGroup
 	select {
 	case <-stopChan:
-		if gqlServer != nil {
-			closeWg.Add(1)
-			go func() {
-				defer closeWg.Done()
-				gqlServer.Shutdown(context.Background())
-				select {
-				case <-grpcStoppedChan:
-					zap.S().Named("OCTOBER").Info("Controlled GRPC server shutdown complete")
-					return
+
+		shutdownCtx := context.Background()
+
+		// We received stop signal, call shutdown on all of our controllable servers
+		for _, controllable := range controllableServers {
+
+			closeGroup.Add(1)
+			go func(c ControllableServer) {
+				defer closeGroup.Done()
+
+				err := c.Shutdown(shutdownCtx)
+				if err != nil {
+					o.logger.Named(c.Name()).Error(c.Name()+" error during shutdown", zap.Error(err))
 				}
 
-			}()
+			}(controllable)
 		}
-
-		closeWg.Add(1)
-		go func() {
-			defer closeWg.Done()
-			o.Shutdown(context.Background())
-			select {
-			case <-octoberStoppedChan:
-				zap.S().Named("OCTOBER").Info("October server shutdown complete")
-				return
-			}
-
-		}()
-
 	}
 
-	go func() {
-		closeWg.Wait()
-		close(done)
-	}()
 
-	select {
-	case <-done:
-		zap.S().Named("OCTOBER").Info("Stopped after server shutdown sequences completed")
-	}
+
+	closeGroup.Wait()
+	o.logger.Info("Stopped")
+
 
 }
 

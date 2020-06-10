@@ -12,6 +12,9 @@ const (
 	modeEnvVariable         = "OCTOBER_MODE"
 	portEnvVariable         = "OCTOBER_PORT"
 	gqlPortEnvVariable      = "OCTOBER_GRAPHQL_PORT"
+	grpcPortEnvVariable     = "OCTOBER_GRPC_PORT"
+	tlsBundleCRTEnvVariable = "OCTOBER_TLS_BUNDLE_CRT"
+	tlsKeyEnvVariable       = "OCTOBER_TLS_KEY"
 	configuratorTagName     = "october"
 )
 

@@ -45,6 +45,10 @@ func (g *GQLGenServer) graphqlHandler() gin.HandlerFunc {
 	}
 }
 
+func (g *GQLGenServer) Name() string {
+	return "gql-gen"
+}
+
 func (g *GQLGenServer) WithExecutableSchema(schema graphql.ExecutableSchema) {
 	g.schema = schema
 }
@@ -58,7 +62,7 @@ func (g *GQLGenServer) WithGinMiddleware(middleware ...gin.HandlerFunc) {
 }
 
 
-func (g *GQLGenServer) Start() error {
+func (g *GQLGenServer) Start() (bool, error) {
 	if g.schema == nil {
 		zap.L().Named("OCTOBER").Fatal("Missing gqlgen executable schema, call WithExecutableSchema before Start ")
 	}
@@ -72,7 +76,7 @@ func (g *GQLGenServer) Start() error {
 	g.serverLock.Lock()
 
 	if g.server != nil {
-		return errors.New("Server already running")
+		return false, errors.New("Server already running")
 	}
 
 	engine := gin.New()
@@ -104,7 +108,9 @@ func (g *GQLGenServer) Start() error {
 
 	zap.S().Named("OCTOBER").Infof("Starting GraphQL server (%s)...", address)
 
-	return g.server.ListenAndServe()
+	err := g.server.ListenAndServe()
+
+	return err == http.ErrServerClosed, err
 }
 
 func (g *GQLGenServer) Shutdown(ctx context.Context) error {
