@@ -202,7 +202,7 @@ func (o *OctoberServer) MustGenerateGQLGenServerServerFromEnv() *GQLGenServer {
 	return server
 }
 
-func (o *OctoberServer) StartControllable(controllableServers []ControllableServer, gracefulSignals ...os.Signal) {
+func (o *OctoberServer) Start(controllableServers []ControllableServer, gracefulSignals ...os.Signal) {
 
 
 	o.server.Addr = fmt.Sprintf("%s:%d", o.octoberBindAddress, o.octoberBindPort)
