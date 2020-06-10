@@ -209,7 +209,7 @@ func (o *OctoberServer) Start(controllableServers []ControllableServer, graceful
 	o.server.Handler = o.buildServerMux()
 
 	controllableServers = append(
-		[]ControllableServer{ControlHttpServer(o.logger.Named("october").Desugar(), o.server, "october")},
+		[]ControllableServer{ControlHttpServer(o.server, "october")},
 		controllableServers...
 	)
 
@@ -271,6 +271,7 @@ func (o *OctoberServer) Start(controllableServers []ControllableServer, graceful
 
 			logger := o.logger.Named(c.Name())
 
+			logger.Infof("Starting controller server %s", c.Name())
 			shutdownControlled, err := c.Start()
 
 			if !shutdownControlled {

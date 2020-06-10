@@ -3,8 +3,6 @@ package october
 import (
 	"context"
 	"net/http"
-
-	"go.uber.org/zap"
 )
 
 type ControllableServer interface {
@@ -20,7 +18,6 @@ type ControllableServer interface {
 
 
 type ControllableHttpServer struct {
-	Logger *zap.Logger
 	Server *http.Server
 	ServerName string
 }
@@ -31,7 +28,6 @@ func (c *ControllableHttpServer) Name() string {
 
 func (c *ControllableHttpServer) Start() (bool, error) {
 
-	c.Logger.Info("Starting controlled server "+c.Name())
 	err := c.Server.ListenAndServe()
 
 	return err == http.ErrServerClosed, err
@@ -44,9 +40,8 @@ func (c *ControllableHttpServer) Shutdown(ctx context.Context) error {
 
 // Create a ControllableHttpServer from a http.Server and a name
 // Expects the listening address to be set under http.Server.Addr
-func ControlHttpServer(logger *zap.Logger, server *http.Server, name string ) ControllableServer {
+func ControlHttpServer(server *http.Server, name string ) ControllableServer {
 	return &ControllableHttpServer{
-		Logger:logger,
 		Server:server,
 		ServerName:name,
 	}
